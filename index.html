@@ -66,6 +66,11 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 .gal .x{position:absolute;top:-8px;right:-8px;width:28px;height:28px;min-height:0;padding:0;border-radius:50%;background:var(--warn);font-size:17px}
 .gal .m{position:absolute;left:3px;bottom:3px;min-height:0;padding:2px 7px;font-size:11px;border-radius:8px}
 .gal .lbl{position:absolute;left:3px;bottom:3px;font-size:11px;padding:2px 7px;border-radius:8px;background:var(--acc);color:#fff}
+.fc.sel{outline:3px solid var(--acc)}
+.fc{position:relative}
+.fc .ck{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;background:var(--card);border:2px solid var(--acc);color:#fff;font-weight:700;display:none;align-items:center;justify-content:center}
+.selmode .fc .ck{display:flex}.fc.sel .ck{background:var(--acc)}
+#selbar{position:fixed;left:0;right:0;bottom:calc(60px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line);padding:10px 16px;display:none;gap:10px;justify-content:space-between;z-index:7}
 .kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line)}
 .kv:last-child{border:0}
 </style>
@@ -113,7 +118,7 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 </section>
 
 <section class="tab" id="t-forms">
-  <div class="field"><input id="q" type="search" placeholder="Поиск формы…"></div>
+  <div class="row field" style="flex-wrap:nowrap"><input id="q" type="search" placeholder="Поиск формы…"><button class="sec" id="selBtn" style="white-space:nowrap">Выбрать</button></div>
   <div class="forms" id="list"></div>
   <p class="tip" id="emptyHint"></p>
 </section>
@@ -135,7 +140,7 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
   </div>
   <div class="card">
     <h2>О приложении</h2>
-    <p class="tip">Версия приложения: 8.</p>
+    <p class="tip">Версия приложения: 9.</p>
     <p class="tip">Формулы как в таблице: смесь = объём × плотность × (1 + запас), гипс = смесь / (100 + вода + добавка) × 100. Работает без интернета. На iPhone: «Поделиться» → «На экран Домой». На Android: меню → «Установить приложение».</p>
   </div>
 </section>
@@ -148,6 +153,7 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
   <button data-t="more"><i>⚙️</i>Ещё</button>
 </nav>
 
+<div id="selbar"><button class="sec" id="selCancel">Отмена</button><button id="selDel" style="background:var(--warn)">Удалить (0)</button></div>
 <dialog id="dView"><div class="dlg" id="vBody"></div></dialog>
 <dialog id="dEdit"><div class="dlg">
   <h3 id="eTitle">Новая форма</h3>
@@ -250,12 +256,17 @@ function normalize(f){if(f.photos)return false;
   f.trash=dirty&&f.photoId?[f.photoId]:[];if(dirty||(f.photo&&!f.photoId))f.dirty=true;
   delete f.photo;delete f.photoId;delete f.photoDirty;return true}
 const urls=[];
+const picked=new Set();let selMode=false;
+function selUI(){document.body.classList.toggle("selmode",selMode);$("#selbar").style.display=selMode?"flex":"none";$("#selDel").textContent="Удалить ("+picked.size+")";$("#selBtn").textContent=selMode?"Готово":"Выбрать"}
+async function deleteForms(ids){
+  for(const id of ids){const f=forms.find(x=>x.id===id);await del(id);if(f&&f.remote){const pd=LS.get("pdel",[]);if(!pd.includes(id))LS.set("pdel",[...pd,id])}if(curForm&&curForm.id===id)curForm=null}
+  picked.clear();await reload();selUI();sync()}
 function renderList(){
   urls.splice(0).forEach(u=>URL.revokeObjectURL(u));
   const q=$("#q").value.trim().toLowerCase();
   const arr=forms.filter(f=>!q||(f.name+" "+(f.prod||"")).toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name,"ru"));
   $("#list").innerHTML=arr.map(f=>{let u="";const cv=cover(f);if(cv){u=URL.createObjectURL(cv);urls.push(u)}
-    return `<div class="fc" data-id="${f.id}"><div class="ph" ${u?`style="background-image:url('${u}')"`:""}>${u?"":"🧱"}</div><div class="t"><b>${esc(f.name)}</b><span>${f.vol} мл${f.prod?" · "+esc(f.prod):""}</span></div></div>`}).join("");
+    return `<div class="fc${picked.has(f.id)?" sel":""}" data-id="${f.id}"><span class="ck">${picked.has(f.id)?"✓":""}</span><div class="ph" ${u?`style="background-image:url('${u}')"`:""}>${u?"":"🧱"}</div><div class="t"><b>${esc(f.name)}</b><span>${f.vol} мл${f.prod?" · "+esc(f.prod):""}</span></div></div>`}).join("");
   $("#emptyHint").textContent=arr.length?"":"Ничего не найдено. Нажмите «+», чтобы добавить форму.";
   showStat();
   const sel=$("#pick");sel.innerHTML='<option value="">— выбрать из базы —</option>'+forms.slice().sort((a,b)=>a.name.localeCompare(b.name,"ru")).map(f=>`<option value="${f.id}">${esc(f.name)} · ${f.vol} мл</option>`).join("");
@@ -286,8 +297,9 @@ function openView(id){
    ${p.pig?`<div class="kv"><span>Краситель</span><b>${f1(c.pg)} г</b></div>`:""}
    ${f.notes?`<p style="white-space:pre-wrap">${esc(f.notes)}</p>`:""}
    <p class="tip">Расчёт при плотности ${String(S.dens).replace(".",",")} г/см³ (из вкладки «Расчёт»).</p>
-   <div class="row" style="justify-content:space-between;margin-top:10px"><button class="sec" id="vEdit">Править</button><div class="row"><button class="sec" id="vClose">Закрыть</button><button id="vCalc">В расчёт</button></div></div>`;
+   <div class="row" style="justify-content:space-between;margin-top:10px"><button class="sec" id="vEdit">Править</button><button class="danger" id="vDel">Удалить</button><div class="row"><button class="sec" id="vClose">Закрыть</button><button id="vCalc">В расчёт</button></div></div>`;
   $("#vBody").querySelectorAll(".gal .th").forEach(t=>t.onclick=()=>{$("#vBig").src=t.dataset.u;$("#vBody").querySelectorAll(".gal .th").forEach(x=>x.classList.toggle("main",x===t))});
+  $("#vDel").onclick=async()=>{if(!confirm("Удалить форму «"+f.name+"» из базы? Это нельзя отменить."))return;await deleteForms([f.id]);$("#dView").close()};
   $("#vClose").onclick=()=>$("#dView").close();
   $("#vEdit").onclick=()=>{$("#dView").close();openEdit(f)};
   $("#vCalc").onclick=()=>{curForm=f;loadForm(f);renderList();$("#dView").close();showTab("calc")};
@@ -337,7 +349,7 @@ function bindEdit(){
       water:+$("#eWater").value,add:+$("#eAdd").value,pig:+$("#ePig").value,res:+$("#eRes").value,notes:$("#eNotes").value.trim(),photos:ePhotos,trash:tr,dirty:true,updated:Date.now()});
     await put(f);curForm=f;await reload();$("#dEdit").close();sync();
   };
-  $("#eDel").onclick=async()=>{if(!confirm("Удалить форму «"+editing.name+"»?"))return;await del(editing.id);if(editing.remote)LS.set("pdel",[...LS.get("pdel",[]),editing.id]);if(curForm&&curForm.id===editing.id)curForm=null;await reload();$("#dEdit").close();sync()};
+  $("#eDel").onclick=async()=>{if(!confirm("Удалить форму «"+editing.name+"» из базы? Это нельзя отменить."))return;await deleteForms([editing.id]);$("#dEdit").close()};
 }
 
 /* ---------- резервная копия ---------- */
@@ -446,7 +458,11 @@ function showTab(t){document.querySelectorAll(".tab").forEach(e=>e.classList.tog
   document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>showTab(b.dataset.t));
   $("#fab").onclick=()=>openEdit(null);
   $("#q").oninput=renderList;
-  $("#list").onclick=e=>{const c=e.target.closest(".fc");if(c)openView(c.dataset.id)};
+  $("#list").onclick=e=>{const c=e.target.closest(".fc");if(!c)return;
+    if(selMode){const id=c.dataset.id;picked.has(id)?picked.delete(id):picked.add(id);c.classList.toggle("sel",picked.has(id));c.querySelector(".ck").textContent=picked.has(id)?"✓":"";selUI()}else openView(c.dataset.id)};
+  $("#selBtn").onclick=()=>{selMode=!selMode;if(!selMode)picked.clear();renderList();selUI()};
+  $("#selCancel").onclick=()=>{selMode=false;picked.clear();renderList();selUI()};
+  $("#selDel").onclick=async()=>{if(!picked.size)return;if(!confirm("Удалить выбранные формы ("+picked.size+") из базы? Это нельзя отменить."))return;await deleteForms([...picked]);selMode=false;selUI();renderList()};
   $("#exp").onclick=exportAll;$("#impB").onclick=()=>$("#imp").click();$("#imp").onchange=e=>{if(e.target.files[0])importAll(e.target.files[0]);e.target.value=""};
   await reload();render();bindCloud();sync();
   if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
