@@ -114,6 +114,14 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 
 <section class="tab" id="t-more">
   <div class="card">
+    <h2>Общая база (Google)</h2>
+    <p class="tip">Формы и фото синхронизируются между устройствами через вашу Google Таблицу и Диск.</p>
+    <div class="field"><label>Ссылка скрипта (…/exec)</label><input id="cUrl" autocapitalize="off" autocorrect="off"></div>
+    <div class="field"><label>Ключ</label><input id="cKey" autocapitalize="off" autocorrect="off"></div>
+    <div class="row"><button id="cConnect">Подключить</button><button class="sec" id="cSync">Синхронизировать</button><button class="danger" id="cDisc">Отключить</button></div>
+    <p class="tip" id="cInfo"></p>
+  </div>
+  <div class="card">
     <h2>Резервная копия</h2>
     <p class="tip">Все формы и фото хранятся в памяти этого устройства. Сохраняйте копию, чтобы перенести базу на другой телефон или планшет.</p>
     <div class="row"><button id="exp">Скачать копию</button><button class="sec" id="impB">Загрузить копию</button></div>
@@ -163,6 +171,7 @@ let DB;
 const idb=()=>new Promise((res,rej)=>{const r=indexedDB.open("gips",1);r.onupgradeneeded=()=>r.result.createObjectStore("forms",{keyPath:"id"});r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
 const tx=(m,fn)=>new Promise((res,rej)=>{const t=DB.transaction("forms",m),s=t.objectStore("forms"),q=fn(s);t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error)});
 const getAll=()=>tx("readonly",s=>s.getAll());
+const getOne=id=>tx("readonly",s=>s.get(id));
 const put=f=>tx("readwrite",s=>s.put(f));
 const del=id=>tx("readwrite",s=>s.delete(id));
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -219,8 +228,8 @@ function loadForm(f){
 }
 async function saveRecipeToForm(){
   if(!curForm){ if(!+S.vol)return alert("Введите объём формы");openEdit(null,{vol:S.vol});return}
-  Object.assign(curForm,{vol:+S.vol,mode:S.mode,water:+S.water,add:+S.add,pig:+S.pig,res:+S.res});
-  await put(curForm);await reload();alert("Рецептура сохранена в «"+curForm.name+"»");
+  Object.assign(curForm,{vol:+S.vol,mode:S.mode,water:+S.water,add:+S.add,pig:+S.pig,res:+S.res,dirty:true,updated:Date.now()});
+  await put(curForm);await reload();sync();alert("Рецептура сохранена в «"+curForm.name+"»");
 }
 
 /* ---------- список форм ---------- */
@@ -233,7 +242,7 @@ function renderList(){
   $("#list").innerHTML=arr.map(f=>{let u="";if(f.photo){u=URL.createObjectURL(f.photo);urls.push(u)}
     return `<div class="fc" data-id="${f.id}"><div class="ph" ${u?`style="background-image:url('${u}')"`:""}>${u?"":"🧱"}</div><div class="t"><b>${esc(f.name)}</b><span>${f.vol} мл${f.prod?" · "+esc(f.prod):""}</span></div></div>`}).join("");
   $("#emptyHint").textContent=arr.length?"":"Ничего не найдено. Нажмите «+», чтобы добавить форму.";
-  $("#stat").textContent=forms.length+" форм";
+  showStat();
   const sel=$("#pick");sel.innerHTML='<option value="">— выбрать из базы —</option>'+forms.slice().sort((a,b)=>a.name.localeCompare(b.name,"ru")).map(f=>`<option value="${f.id}">${esc(f.name)} · ${f.vol} мл</option>`).join("");
   sel.value=curForm?curForm.id:"";
 }
@@ -270,7 +279,7 @@ function openView(id){
 }
 
 /* ---------- редактирование ---------- */
-let editing=null,ePhotoBlob=null,eURL="";
+let editing=null,ePhotoBlob=null,ePhotoOrig=null,eURL="";
 function setEPhoto(){
   if(eURL)URL.revokeObjectURL(eURL);eURL=ePhotoBlob?URL.createObjectURL(ePhotoBlob):"";
   $("#ePhoto").style.display=eURL?"":"none";if(eURL)$("#ePhoto").src=eURL;
@@ -283,7 +292,7 @@ function openEdit(f,pre){
   $("#eWater").value=d.water;$("#eAdd").value=d.add;$("#ePig").value=d.pig||"";$("#eRes").value=d.res;$("#eNotes").value=d.notes||"";
   $("#eAddW").style.display=$("#eMode").value==="s"?"":"none";
   $("#eDel").style.display=f?"":"none";
-  ePhotoBlob=f?f.photo||null:null;setEPhoto();
+  ePhotoBlob=f?f.photo||null:null;ePhotoOrig=ePhotoBlob;setEPhoto();
   $("#dEdit").showModal();
 }
 function resize(file,max=1100){
@@ -303,10 +312,11 @@ function bindEdit(){
     const name=$("#eName").value.trim(),vol=+$("#eVol").value;
     if(!name)return alert("Введите название");if(!vol)return alert("Введите объём");
     const f=Object.assign(editing||{id:uid(),created:Date.now()},{name,prod:$("#eProd").value.trim(),vol,mode:$("#eMode").value,
-      water:+$("#eWater").value,add:+$("#eAdd").value,pig:+$("#ePig").value,res:+$("#eRes").value,notes:$("#eNotes").value.trim(),photo:ePhotoBlob});
-    await put(f);curForm=f;await reload();$("#dEdit").close();
+      water:+$("#eWater").value,add:+$("#eAdd").value,pig:+$("#ePig").value,res:+$("#eRes").value,notes:$("#eNotes").value.trim(),photo:ePhotoBlob,dirty:true,updated:Date.now()});
+    if(ePhotoBlob!==ePhotoOrig)f.photoDirty=true;
+    await put(f);curForm=f;await reload();$("#dEdit").close();sync();
   };
-  $("#eDel").onclick=async()=>{if(!confirm("Удалить форму «"+editing.name+"»?"))return;await del(editing.id);if(curForm&&curForm.id===editing.id)curForm=null;await reload();$("#dEdit").close()};
+  $("#eDel").onclick=async()=>{if(!confirm("Удалить форму «"+editing.name+"»?"))return;await del(editing.id);if(editing.remote)LS.set("pdel",[...LS.get("pdel",[]),editing.id]);if(curForm&&curForm.id===editing.id)curForm=null;await reload();$("#dEdit").close();sync()};
 }
 
 /* ---------- резервная копия ---------- */
@@ -324,6 +334,64 @@ async function importAll(file){
     await reload();alert("Готово")}catch(e){alert("Файл не похож на копию базы")}
 }
 
+/* ---------- облачная синхронизация ---------- */
+let cloudState="",cloudErr="",syncing=false,again=false;
+function showStat(){$("#stat").textContent=forms.length+" форм"+({sync:" · ⏳",ok:" · ☁️✓",err:" · ⚠️ нет связи"}[cloudState]||"")}
+function cloudUI(){const c=LS.get("cloud",null),t=LS.get("lastSync",0);
+  $("#cUrl").value=c?c.url:"";$("#cKey").value=c?c.key:"";
+  $("#cInfo").textContent=c?("Подключено."+(t?" Последняя синхронизация: "+new Date(t).toLocaleString("ru")+".":"")+(cloudErr?" Ошибка: "+cloudErr:"")):"Не подключено."}
+async function api(body){const c=LS.get("cloud");const r=await fetch(c.url,{method:"POST",body:JSON.stringify(Object.assign({key:c.key},body))});const j=await r.json();if(!j.ok)throw new Error(j.error||"ошибка");return j}
+const SYNC_FIELDS=["id","name","prod","vol","mode","water","add","pig","res","notes","updated"];
+async function sync(){
+  if(!LS.get("cloud",null)){cloudState="";showStat();cloudUI();return}
+  if(syncing){again=true;return}
+  if(!navigator.onLine){cloudState="err";showStat();return}
+  syncing=true;cloudState="sync";showStat();
+  try{
+    let pd=LS.get("pdel",[]);
+    for(const id of pd.slice()){await api({action:"delete",id});pd=pd.filter(x=>x!==id);LS.set("pdel",pd)}
+    let rem=(await api({action:"list"})).forms;
+    const rids=new Set(rem.map(r=>r.id));
+    let pushed=false;
+    for(const f of await getAll()){
+      if(!(f.dirty||(!f.remote&&!rids.has(f.id))))continue;
+      const form={};SYNC_FIELDS.forEach(k=>form[k]=f[k]);form.updated=+f.updated||0;
+      const body={action:"save",form};
+      if(f.photoDirty){if(f.photo)body.photo=await b2d(f.photo);else body.removePhoto=true}
+      const r=await api(body);pushed=true;
+      const cur=await getOne(f.id);
+      if(cur){cur.photoId=r.photoId;cur.remote=true;if(cur.updated===f.updated){cur.dirty=false;cur.photoDirty=false}await put(cur)}
+    }
+    if(pushed)rem=(await api({action:"list"})).forms;
+    const local=await getAll(),L=new Map(local.map(f=>[f.id,f])),ids=new Set(rem.map(r=>r.id));
+    for(const r of rem){
+      const l=L.get(r.id);
+      if(l&&l.dirty)continue;
+      const same=l&&l.remote&&(+l.updated>=+r.updated)&&((l.photoId||"")===(r.photoId||""));
+      if(same)continue;
+      const n=Object.assign({},l||{created:Date.now()},{id:r.id,name:String(r.name),prod:String(r.prod||""),vol:+r.vol,mode:r.mode||"g",water:+r.water,add:+r.add,pig:+r.pig,res:+r.res,notes:String(r.notes||""),updated:+r.updated||0,remote:true,dirty:false,photoDirty:false,photoId:r.photoId||""});
+      if(!n.photoId)n.photo=null;
+      else if(!l||l.photoId!==n.photoId||!l.photo){try{n.photo=await d2b((await api({action:"photo",id:n.photoId})).data)}catch(e){n.photo=l?l.photo||null:null}}
+      await put(n);
+    }
+    for(const l of local)if(l.remote&&!l.dirty&&!ids.has(l.id)){await del(l.id);if(curForm&&curForm.id===l.id)curForm=null}
+    LS.set("lastSync",Date.now());cloudErr="";cloudState="ok";
+    await reload();
+  }catch(e){cloudErr=String(e.message||e);cloudState="err"}
+  syncing=false;showStat();cloudUI();
+  if(again){again=false;sync()}
+}
+function bindCloud(){
+  $("#cConnect").onclick=()=>{const url=$("#cUrl").value.trim(),key=$("#cKey").value.trim();if(!url||!key)return alert("Введите ссылку и ключ");LS.set("cloud",{url,key});sync()};
+  $("#cSync").onclick=sync;
+  $("#cDisc").onclick=()=>{if(confirm("Отключить общую базу? Данные на устройстве останутся.")){LS.set("cloud",null);cloudState="";showStat();cloudUI()}};
+  addEventListener("online",sync);
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden)sync()});
+  const m=location.hash.match(/^#connect=(.+)$/);
+  if(m){try{const j=JSON.parse(atob(decodeURIComponent(m[1])));if(j.u&&j.k)LS.set("cloud",{url:j.u,key:j.k})}catch(e){}history.replaceState(null,"",location.pathname)}
+  cloudUI();
+}
+
 /* ---------- вкладки ---------- */
 const TT={calc:"Расчёт гипса",forms:"База форм",more:"Ещё"};
 function showTab(t){document.querySelectorAll(".tab").forEach(e=>e.classList.toggle("on",e.id==="t-"+t));
@@ -333,7 +401,8 @@ function showTab(t){document.querySelectorAll(".tab").forEach(e=>e.classList.tog
 /* ---------- старт ---------- */
 (async()=>{
   DB=await idb();
-  if(!LS.get("seeded",false)){const cur=await getAll();if(!cur.length)for(const [n,v] of SEED)await put({id:uid(),name:n,prod:"",vol:v,mode:"g",water:27,add:4,pig:0,res:10,notes:"",photo:null,created:Date.now()});LS.set("seeded",true)}
+  if(!LS.get("seeded",false)){const cur=await getAll();if(!cur.length)for(let i=0;i<SEED.length;i++){const [n,v]=SEED[i];await put({id:"seed-"+i,name:n,prod:"",vol:v,mode:"g",water:27,add:4,pig:0,res:10,notes:"",photo:null,created:Date.now(),updated:0,dirty:false,remote:false})}LS.set("seeded",true)}
+  if(!LS.get("seedMig",false)){const cur=await getAll();for(const f of cur){const i=SEED.findIndex(s=>s[0]===f.name&&s[1]===f.vol);if(i>=0&&!String(f.id).startsWith("seed-")&&!cur.some(x=>x.id==="seed-"+i)){await del(f.id);f.id="seed-"+i;f.updated=f.updated||0;await put(f)}}LS.set("seedMig",true)}
   try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
   bindCalc();bindEdit();fillInputs();
   document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>showTab(b.dataset.t));
@@ -341,7 +410,7 @@ function showTab(t){document.querySelectorAll(".tab").forEach(e=>e.classList.tog
   $("#q").oninput=renderList;
   $("#list").onclick=e=>{const c=e.target.closest(".fc");if(c)openView(c.dataset.id)};
   $("#exp").onclick=exportAll;$("#impB").onclick=()=>$("#imp").click();$("#imp").onchange=e=>{if(e.target.files[0])importAll(e.target.files[0]);e.target.value=""};
-  await reload();render();
+  await reload();render();bindCloud();sync();
   if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 })();
 </script>
