@@ -60,6 +60,12 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 .dlg h3{margin:0 0 12px;font-size:19px}
 .big{width:100%;border-radius:14px;max-height:340px;object-fit:cover;margin-bottom:10px;background:var(--acc2)}
 .fab{position:fixed;right:16px;bottom:calc(76px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;font-size:30px;padding:0;box-shadow:0 4px 14px rgba(0,0,0,.3);z-index:7}
+.gal{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.gal .th{position:relative;width:92px;height:92px;border-radius:12px;background:var(--acc2) center/cover;border:3px solid transparent;cursor:pointer}
+.gal .th.main{border-color:var(--acc)}
+.gal .x{position:absolute;top:-8px;right:-8px;width:28px;height:28px;min-height:0;padding:0;border-radius:50%;background:var(--warn);font-size:17px}
+.gal .m{position:absolute;left:3px;bottom:3px;min-height:0;padding:2px 7px;font-size:11px;border-radius:8px}
+.gal .lbl{position:absolute;left:3px;bottom:3px;font-size:11px;padding:2px 7px;border-radius:8px;background:var(--acc);color:#fff}
 .kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line)}
 .kv:last-child{border:0}
 </style>
@@ -129,7 +135,7 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
   </div>
   <div class="card">
     <h2>О приложении</h2>
-    <p class="tip">Версия приложения: 4.</p>
+    <p class="tip">Версия приложения: 5.</p>
     <p class="tip">Формулы как в таблице: смесь = объём × плотность × (1 + запас), гипс = смесь / (100 + вода + добавка) × 100. Работает без интернета. На iPhone: «Поделиться» → «На экран Домой». На Android: меню → «Установить приложение».</p>
   </div>
 </section>
@@ -145,9 +151,10 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 <dialog id="dView"><div class="dlg" id="vBody"></div></dialog>
 <dialog id="dEdit"><div class="dlg">
   <h3 id="eTitle">Новая форма</h3>
-  <img id="ePhoto" class="big" style="display:none" alt="">
-  <div class="row field"><button class="sec" id="ePick">📷 Фото</button><button class="danger" id="eDelPhoto" style="display:none">Убрать фото</button></div>
-  <input id="eFile" type="file" accept="image/*" hidden>
+  <div id="eGal" class="gal"></div>
+  <div class="row field"><button class="sec" id="ePick">📷 Добавить фото</button></div>
+  <p class="tip" style="margin-top:-4px">Например, фото формы и готового изделия. Первое фото — главное, оно на карточке.</p>
+  <input id="eFile" type="file" accept="image/*" multiple hidden>
   <div class="field"><label>Название формы</label><input id="eName"></div>
   <div class="field"><label>Что получается (изделие)</label><input id="eProd" placeholder="например, свеча, поднос…"></div>
   <div class="grid">
@@ -234,13 +241,20 @@ async function saveRecipeToForm(){
 }
 
 /* ---------- список форм ---------- */
-function photoURL(f){return f.photo?URL.createObjectURL(f.photo):""}
+const phs=f=>f.photos||[];
+const cover=f=>{const p=phs(f).find(x=>x.blob);return p?p.blob:null};
+const parseIds=v=>{v=String(v||"");if(!v)return[];if(v[0]==="[")try{return JSON.parse(v)}catch(e){}return[v]};
+function normalize(f){if(f.photos)return false;
+  const dirty=!!f.photoDirty;
+  f.photos=f.photo?[{k:uid(),remoteId:dirty?"":(f.photoId||""),blob:f.photo}]:(f.photoId&&!dirty?[{k:uid(),remoteId:f.photoId,blob:null}]:[]);
+  f.trash=dirty&&f.photoId?[f.photoId]:[];if(dirty||(f.photo&&!f.photoId))f.dirty=true;
+  delete f.photo;delete f.photoId;delete f.photoDirty;return true}
 const urls=[];
 function renderList(){
   urls.splice(0).forEach(u=>URL.revokeObjectURL(u));
   const q=$("#q").value.trim().toLowerCase();
   const arr=forms.filter(f=>!q||(f.name+" "+(f.prod||"")).toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name,"ru"));
-  $("#list").innerHTML=arr.map(f=>{let u="";if(f.photo){u=URL.createObjectURL(f.photo);urls.push(u)}
+  $("#list").innerHTML=arr.map(f=>{let u="";const cv=cover(f);if(cv){u=URL.createObjectURL(cv);urls.push(u)}
     return `<div class="fc" data-id="${f.id}"><div class="ph" ${u?`style="background-image:url('${u}')"`:""}>${u?"":"🧱"}</div><div class="t"><b>${esc(f.name)}</b><span>${f.vol} мл${f.prod?" · "+esc(f.prod):""}</span></div></div>`}).join("");
   $("#emptyHint").textContent=arr.length?"":"Ничего не найдено. Нажмите «+», чтобы добавить форму.";
   showStat();
@@ -251,13 +265,13 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 async function reload(){forms=await getAll();if(curForm)curForm=forms.find(f=>f.id===curForm.id)||null;renderList()}
 
 /* ---------- карточка формы ---------- */
-let viewURL="";
+const viewURLs=[];
 function openView(id){
   const f=forms.find(x=>x.id===id);if(!f)return;
-  if(viewURL)URL.revokeObjectURL(viewURL);viewURL=f.photo?URL.createObjectURL(f.photo):"";
+  viewURLs.splice(0).forEach(u=>URL.revokeObjectURL(u));const pu=phs(f).filter(p=>p.blob).map(p=>{const u=URL.createObjectURL(p.blob);viewURLs.push(u);return u});
   const p={vol:f.vol,dens:S.dens,res:f.res??S.res,water:f.water??S.water,add:f.add??S.add,pig:f.pig||0,mode:f.mode||"g",parts:1};
   const c=calc(p);
-  $("#vBody").innerHTML=`${viewURL?`<img class="big" src="${viewURL}">`:""}
+  $("#vBody").innerHTML=`${pu.length?`<img class="big" id="vBig" src="${pu[0]}">${pu.length>1?`<div class="gal">${pu.map((u,i)=>`<div class="th ${i?"":"main"}" data-u="${u}" style="background-image:url('${u}')"></div>`).join("")}</div>`:""}`:""}
    <h3>${esc(f.name)}</h3>
    ${f.prod?`<div class="kv"><span>Что получается</span><b>${esc(f.prod)}</b></div>`:""}
    <div class="kv"><span>Объём</span><b>${f.vol} мл</b></div>
@@ -273,6 +287,7 @@ function openView(id){
    ${f.notes?`<p style="white-space:pre-wrap">${esc(f.notes)}</p>`:""}
    <p class="tip">Расчёт при плотности ${String(S.dens).replace(".",",")} г/см³ (из вкладки «Расчёт»).</p>
    <div class="row" style="justify-content:space-between;margin-top:10px"><button class="sec" id="vEdit">Править</button><div class="row"><button class="sec" id="vClose">Закрыть</button><button id="vCalc">В расчёт</button></div></div>`;
+  $("#vBody").querySelectorAll(".gal .th").forEach(t=>t.onclick=()=>{$("#vBig").src=t.dataset.u;$("#vBody").querySelectorAll(".gal .th").forEach(x=>x.classList.toggle("main",x===t))});
   $("#vClose").onclick=()=>$("#dView").close();
   $("#vEdit").onclick=()=>{$("#dView").close();openEdit(f)};
   $("#vCalc").onclick=()=>{curForm=f;loadForm(f);renderList();$("#dView").close();showTab("calc")};
@@ -280,11 +295,12 @@ function openView(id){
 }
 
 /* ---------- редактирование ---------- */
-let editing=null,ePhotoBlob=null,ePhotoOrig=null,eURL="";
-function setEPhoto(){
-  if(eURL)URL.revokeObjectURL(eURL);eURL=ePhotoBlob?URL.createObjectURL(ePhotoBlob):"";
-  $("#ePhoto").style.display=eURL?"":"none";if(eURL)$("#ePhoto").src=eURL;
-  $("#eDelPhoto").style.display=eURL?"":"none";$("#ePick").textContent=eURL?"📷 Заменить фото":"📷 Фото";
+let editing=null,ePhotos=[],eTrash=[];const eURLs=[];
+function setEPhotos(){
+  eURLs.splice(0).forEach(u=>URL.revokeObjectURL(u));
+  $("#eGal").innerHTML=ePhotos.map((p,i)=>{let u="";if(p.blob){u=URL.createObjectURL(p.blob);eURLs.push(u)}
+    return `<div class="th ${i?"":"main"}" ${u?`style="background-image:url('${u}')"`:""}><button class="x" data-x="${i}">×</button>${i?`<button class="m sec" data-m="${i}">★ главное</button>`:`<span class="lbl">главное</span>`}</div>`}).join("");
+  $("#ePick").textContent=ePhotos.length?"📷 Добавить ещё фото":"📷 Добавить фото";
 }
 function openEdit(f,pre){
   editing=f;const d=f||Object.assign({name:"",prod:"",vol:"",mode:S.mode,water:S.water,add:S.add,pig:S.pig,res:S.res,notes:""},pre||{});
@@ -293,7 +309,7 @@ function openEdit(f,pre){
   $("#eWater").value=d.water;$("#eAdd").value=d.add;$("#ePig").value=d.pig||"";$("#eRes").value=d.res;$("#eNotes").value=d.notes||"";
   $("#eAddW").style.display=$("#eMode").value==="s"?"":"none";
   $("#eDel").style.display=f?"":"none";
-  ePhotoBlob=f?f.photo||null:null;ePhotoOrig=ePhotoBlob;setEPhoto();
+  ePhotos=f?phs(f).map(p=>Object.assign({},p)):[];eTrash=[];setEPhotos();
   $("#dEdit").showModal();
 }
 function resize(file,max=1100){
@@ -305,16 +321,20 @@ function resize(file,max=1100){
 }
 function bindEdit(){
   $("#ePick").onclick=()=>$("#eFile").click();
-  $("#eFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{ePhotoBlob=await resize(f)}catch(_){alert("Не удалось открыть фото")}e.target.value="";setEPhoto()};
-  $("#eDelPhoto").onclick=()=>{ePhotoBlob=null;setEPhoto()};
+  $("#eFile").onchange=async e=>{const fs=[...e.target.files];e.target.value="";
+    for(const f of fs){try{ePhotos.push({k:uid(),remoteId:"",blob:await resize(f)})}catch(_){alert("Не удалось открыть фото")}}setEPhotos()};
+  $("#eGal").onclick=e=>{const b=e.target.closest("button");if(!b)return;
+    if(b.dataset.x!==undefined){const [p]=ePhotos.splice(+b.dataset.x,1);if(p.remoteId)eTrash.push(p.remoteId)}
+    else if(b.dataset.m!==undefined){const [p]=ePhotos.splice(+b.dataset.m,1);ePhotos.unshift(p)}
+    setEPhotos()};
   $("#eMode").onchange=()=>$("#eAddW").style.display=$("#eMode").value==="s"?"":"none";
   $("#eCancel").onclick=()=>$("#dEdit").close();
   $("#eSave").onclick=async()=>{
     const name=$("#eName").value.trim(),vol=+$("#eVol").value;
     if(!name)return alert("Введите название");if(!vol)return alert("Введите объём");
+    const tr=[...((editing&&editing.trash)||[]),...eTrash];
     const f=Object.assign(editing||{id:uid(),created:Date.now()},{name,prod:$("#eProd").value.trim(),vol,mode:$("#eMode").value,
-      water:+$("#eWater").value,add:+$("#eAdd").value,pig:+$("#ePig").value,res:+$("#eRes").value,notes:$("#eNotes").value.trim(),photo:ePhotoBlob,dirty:true,updated:Date.now()});
-    if(ePhotoBlob!==ePhotoOrig)f.photoDirty=true;
+      water:+$("#eWater").value,add:+$("#eAdd").value,pig:+$("#ePig").value,res:+$("#eRes").value,notes:$("#eNotes").value.trim(),photos:ePhotos,trash:tr,dirty:true,updated:Date.now()});
     await put(f);curForm=f;await reload();$("#dEdit").close();sync();
   };
   $("#eDel").onclick=async()=>{if(!confirm("Удалить форму «"+editing.name+"»?"))return;await del(editing.id);if(editing.remote)LS.set("pdel",[...LS.get("pdel",[]),editing.id]);if(curForm&&curForm.id===editing.id)curForm=null;await reload();$("#dEdit").close();sync()};
@@ -324,14 +344,14 @@ function bindEdit(){
 const b2d=b=>new Promise(r=>{if(!b)return r(null);const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(b)});
 const d2b=d=>d?fetch(d).then(r=>r.blob()):null;
 async function exportAll(){
-  const out=[];for(const f of forms)out.push(Object.assign({},f,{photo:await b2d(f.photo)}));
+  const out=[];for(const f of forms)out.push(Object.assign({},f,{photos:await Promise.all(phs(f).map(async p=>Object.assign({},p,{blob:await b2d(p.blob)})))}));
   const blob=new Blob([JSON.stringify({v:1,calc:S,forms:out})],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="gips-baza-"+new Date().toISOString().slice(0,10)+".json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
 }
 async function importAll(file){
   try{const j=JSON.parse(await file.text());if(!Array.isArray(j.forms))throw 0;
     if(!confirm("Добавить/обновить "+j.forms.length+" форм из копии?"))return;
-    for(const f of j.forms){f.photo=await d2b(f.photo);await put(f)}
+    for(const f of j.forms){if(f.photos)for(const p of f.photos)p.blob=await d2b(p.blob);else f.photo=await d2b(f.photo);normalize(f);await put(f)}
     await reload();alert("Готово")}catch(e){alert("Файл не похож на копию базы")}
 }
 
@@ -356,23 +376,35 @@ async function sync(){
     let pushed=false;
     for(const f of await getAll()){
       if(!(f.dirty||(!f.remote&&!rids.has(f.id))))continue;
-      const form={};SYNC_FIELDS.forEach(k=>form[k]=f[k]);form.updated=+f.updated||0;
-      const body={action:"save",form};
-      if(f.photoDirty){if(f.photo)body.photo=await b2d(f.photo);else body.removePhoto=true}
-      const r=await api(body);pushed=true;
-      const cur=await getOne(f.id);
-      if(cur){cur.photoId=r.photoId;cur.remote=true;if(cur.updated===f.updated){cur.dirty=false;cur.photoDirty=false}await put(cur)}
+      let cur=f;
+      for(const p of phs(f))if(!p.remoteId&&p.blob){
+        const r=await api({action:"upload",photo:await b2d(p.blob),name:f.id+"-"+p.k+".jpg"});
+        cur=await getOne(f.id);const q=cur&&phs(cur).find(x=>x.k===p.k);
+        if(q){q.remoteId=r.id;await put(cur)}else await api({action:"trash",id:r.id});
+      }
+      cur=await getOne(f.id);if(!cur)continue;
+      const form={};SYNC_FIELDS.forEach(k=>form[k]=cur[k]);form.updated=+cur.updated||0;
+      form.photoId=JSON.stringify(phs(cur).filter(p=>p.remoteId).map(p=>p.remoteId));
+      await api({action:"save",form});pushed=true;
+      const tr=cur.trash||[];for(const id of tr)await api({action:"trash",id});
+      const c2=await getOne(f.id);
+      if(c2){c2.remote=true;c2.trash=(c2.trash||[]).filter(x=>!tr.includes(x));if(c2.updated===cur.updated)c2.dirty=false;await put(c2)}
     }
     if(pushed)rem=(await api({action:"list"})).forms;
     const local=await getAll(),L=new Map(local.map(f=>[f.id,f])),ids=new Set(rem.map(r=>r.id));
     for(const r of rem){
       const l=L.get(r.id);
       if(l&&l.dirty)continue;
-      const same=l&&l.remote&&(+l.updated>=+r.updated)&&((l.photoId||"")===(r.photoId||""))&&(!r.photoId||!!l.photo);
+      const rp=parseIds(r.photoId),lp=l?phs(l):[];
+      const same=l&&l.remote&&(+l.updated>=+r.updated)&&lp.map(p=>p.remoteId).join(",")===rp.join(",")&&lp.every(p=>p.blob);
       if(same)continue;
-      const n=Object.assign({},l||{created:Date.now()},{id:r.id,name:String(r.name),prod:String(r.prod||""),vol:+r.vol,mode:r.mode||"g",water:+r.water,add:+r.add,pig:+r.pig,res:+r.res,notes:String(r.notes||""),updated:+r.updated||0,remote:true,dirty:false,photoDirty:false,photoId:r.photoId||""});
-      if(!n.photoId)n.photo=null;
-      else if(!l||l.photoId!==n.photoId||!l.photo){try{n.photo=await d2b((await api({action:"photo",id:n.photoId})).data)}catch(e){n.photo=l?l.photo||null:null}}
+      const n=Object.assign({},l||{created:Date.now()},{id:r.id,name:String(r.name),prod:String(r.prod||""),vol:+r.vol,mode:r.mode||"g",water:+r.water,add:+r.add,pig:+r.pig,res:+r.res,notes:String(r.notes||""),updated:+r.updated||0,remote:true,dirty:false,trash:[],photos:[]});
+      delete n.photo;delete n.photoId;delete n.photoDirty;
+      for(const id of rp){
+        const ex=lp.find(p=>p.remoteId===id&&p.blob);if(ex){n.photos.push(ex);continue}
+        let blob=null;try{blob=await d2b((await api({action:"photo",id})).data)}catch(e){}
+        n.photos.push({k:uid(),remoteId:id,blob});
+      }
       await put(n);
     }
     for(const l of local)if(l.remote&&!l.dirty&&!ids.has(l.id)){await del(l.id);if(curForm&&curForm.id===l.id)curForm=null}
@@ -404,6 +436,7 @@ function showTab(t){document.querySelectorAll(".tab").forEach(e=>e.classList.tog
   DB=await idb();
   if(!LS.get("seeded",false)){const cur=await getAll();if(!cur.length)for(let i=0;i<SEED.length;i++){const [n,v]=SEED[i];await put({id:"seed-"+i,name:n,prod:"",vol:v,mode:"g",water:27,add:4,pig:0,res:10,notes:"",photo:null,created:Date.now(),updated:0,dirty:false,remote:false})}LS.set("seeded",true)}
   if(!LS.get("seedMig",false)){const cur=await getAll();for(const f of cur){const i=SEED.findIndex(s=>s[0]===f.name&&s[1]===f.vol);if(i>=0&&!String(f.id).startsWith("seed-")&&!cur.some(x=>x.id==="seed-"+i)){await del(f.id);f.id="seed-"+i;f.updated=f.updated||0;await put(f)}}LS.set("seedMig",true)}
+  for(const f of await getAll())if(normalize(f))await put(f);
   try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
   bindCalc();bindEdit();fillInputs();
   document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>showTab(b.dataset.t));
