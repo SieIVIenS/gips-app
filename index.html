@@ -140,7 +140,7 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
   </div>
   <div class="card">
     <h2>О приложении</h2>
-    <p class="tip">Версия приложения: 9.</p>
+    <p class="tip">Версия приложения: 10.</p>
     <p class="tip">Формулы как в таблице: смесь = объём × плотность × (1 + запас), гипс = смесь / (100 + вода + добавка) × 100. Работает без интернета. На iPhone: «Поделиться» → «На экран Домой». На Android: меню → «Установить приложение».</p>
   </div>
 </section>
@@ -383,6 +383,7 @@ async function sync(){
     let pd=LS.get("pdel",[]);
     for(const id of pd.slice()){await api({action:"delete",id});pd=pd.filter(x=>x!==id);LS.set("pdel",pd)}
     let rem=(await api({action:"list"})).forms;
+    if(!rem.length)for(const f of await getAll())if(f.remote){f.remote=false;await put(f)}
     const rids=new Set(rem.map(r=>r.id));
     let pushed=false;
     for(const f of await getAll()){
