@@ -367,7 +367,7 @@ async function sync(){
     for(const r of rem){
       const l=L.get(r.id);
       if(l&&l.dirty)continue;
-      const same=l&&l.remote&&(+l.updated>=+r.updated)&&((l.photoId||"")===(r.photoId||""));
+      const same=l&&l.remote&&(+l.updated>=+r.updated)&&((l.photoId||"")===(r.photoId||""))&&(!r.photoId||!!l.photo);
       if(same)continue;
       const n=Object.assign({},l||{created:Date.now()},{id:r.id,name:String(r.name),prod:String(r.prod||""),vol:+r.vol,mode:r.mode||"g",water:+r.water,add:+r.add,pig:+r.pig,res:+r.res,notes:String(r.notes||""),updated:+r.updated||0,remote:true,dirty:false,photoDirty:false,photoId:r.photoId||""});
       if(!n.photoId)n.photo=null;
