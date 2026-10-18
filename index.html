@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2f6f5e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Гипс">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<title>Гипс — расчёт и формы</title>
+<style>
+:root{--bg:#f4f1ec;--card:#fff;--ink:#23211e;--mute:#7a746b;--line:#e3ded5;--acc:#2f6f5e;--acc2:#e8f1ee;--warn:#b4472f;--res:#fff6d6;--r:16px}
+@media(prefers-color-scheme:dark){:root{--bg:#171715;--card:#22221f;--ink:#f0ede6;--mute:#a09a8f;--line:#37362f;--acc:#5fb59b;--acc2:#1f2d29;--warn:#e27a62;--res:#3a3420}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,system-ui,Segoe UI,Roboto,sans-serif}
+body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(10px + env(safe-area-inset-top)) 16px 8px;display:flex;align-items:center;justify-content:space-between}
+h1{font-size:22px;margin:0}
+main{max-width:760px;margin:0 auto;padding:0 16px 24px}
+.tab{display:none}.tab.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.card h2{font-size:14px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);margin:0 0 10px;font-weight:600}
+label{display:block;font-size:13px;color:var(--mute);margin:0 0 4px}
+input,select,textarea{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:11px 12px;min-height:46px}
+textarea{min-height:90px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--acc);border-color:transparent}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid .full{grid-column:1/-1}
+.field{margin-bottom:10px}
+button{font:inherit;border:0;border-radius:12px;padding:11px 16px;min-height:46px;background:var(--acc);color:#fff;font-weight:600;cursor:pointer}
+button.sec{background:var(--acc2);color:var(--acc)}
+button.danger{background:transparent;color:var(--warn)}
+button.chip{min-height:36px;padding:6px 12px;background:var(--acc2);color:var(--acc);font-weight:500}
+button.chip.on{background:var(--acc);color:#fff}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.seg{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:3px;margin-bottom:12px}
+.seg button{flex:1;background:transparent;color:var(--mute);min-height:40px}
+.seg button.on{background:var(--acc);color:#fff}
+.res{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.res div{background:var(--res);border-radius:14px;padding:12px}
+.res b{display:block;font-size:30px;line-height:1.1;font-variant-numeric:tabular-nums}
+.res span{font-size:13px;color:var(--mute)}
+.res small{display:block;font-size:12px;color:var(--mute);margin-top:2px}
+.tip{font-size:13px;color:var(--mute)}
+.forms{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.fc{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;cursor:pointer}
+.fc .ph{aspect-ratio:1;background:var(--acc2) center/cover;display:flex;align-items:center;justify-content:center;font-size:34px;color:var(--acc)}
+.fc .t{padding:8px 10px}.fc .t b{display:block;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fc .t span{font-size:13px;color:var(--mute)}
+nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:6}
+nav button{flex:1;background:transparent;color:var(--mute);border-radius:0;padding:10px 4px;min-height:60px;font-size:12px;font-weight:500}
+nav button i{display:block;font-style:normal;font-size:22px}
+nav button.on{color:var(--acc)}
+dialog{border:0;border-radius:20px;padding:0;width:min(560px,calc(100% - 20px));max-height:92vh;background:var(--card);color:var(--ink)}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+.dlg{padding:16px;max-height:92vh;overflow:auto}
+.dlg h3{margin:0 0 12px;font-size:19px}
+.big{width:100%;border-radius:14px;max-height:340px;object-fit:cover;margin-bottom:10px;background:var(--acc2)}
+.fab{position:fixed;right:16px;bottom:calc(76px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;font-size:30px;padding:0;box-shadow:0 4px 14px rgba(0,0,0,.3);z-index:7}
+.kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line)}
+.kv:last-child{border:0}
+</style>
+</head>
+<body>
+<header><h1 id="ttl">Расчёт гипса</h1><span class="tip" id="stat"></span></header>
+<main>
+
+<section class="tab on" id="t-calc">
+  <div class="card">
+    <h2>Форма</h2>
+    <div class="field"><select id="pick"></select></div>
+    <div class="grid">
+      <div><label>Объём формы, мл</label><input id="vol" type="number" inputmode="decimal" min="0"></div>
+      <div><label>Деление на части</label><input id="parts" type="number" inputmode="numeric" min="1" value="1"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Смесь</h2>
+    <div class="seg"><button id="m-g" class="on">Гипс + вода</button><button id="m-s">С добавкой СВВ-500</button></div>
+    <div class="grid">
+      <div><label>Плотность смеси, г/см³</label><input id="dens" type="number" inputmode="decimal" step="0.01"></div>
+      <div><label>Запас, %</label><input id="res" type="number" inputmode="decimal"></div>
+      <div><label>Вода к гипсу, %</label><input id="water" type="number" inputmode="decimal"></div>
+      <div id="addW" style="display:none"><label>Добавка СВВ-500, %</label><input id="add" type="number" inputmode="decimal"></div>
+      <div class="full"><label>Краситель / пигмент, % от гипса</label>
+        <input id="pig" type="number" inputmode="decimal" step="0.1">
+        <div class="row" style="margin-top:6px" id="pigChips"></div></div>
+    </div>
+    <details style="margin-top:10px"><summary class="tip">Как узнать плотность смеси</summary>
+      <div class="grid" style="margin-top:8px">
+        <div><label>Вес воды в форме, г</label><input id="dw" type="number" inputmode="decimal"></div>
+        <div><label>Вес сырого изделия, г</label><input id="dp" type="number" inputmode="decimal"></div>
+      </div>
+      <div class="row" style="margin-top:8px"><b id="dres">—</b><button class="sec" id="dapply">Применить</button></div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>Результат</h2>
+    <div class="res" id="out"></div>
+    <div class="row" style="margin-top:12px"><button class="sec" id="saveToForm">Сохранить рецептуру в форму</button></div>
+  </div>
+</section>
+
+<section class="tab" id="t-forms">
+  <div class="field"><input id="q" type="search" placeholder="Поиск формы…"></div>
+  <div class="forms" id="list"></div>
+  <p class="tip" id="emptyHint"></p>
+</section>
+
+<section class="tab" id="t-more">
+  <div class="card">
+    <h2>Резервная копия</h2>
+    <p class="tip">Все формы и фото хранятся в памяти этого устройства. Сохраняйте копию, чтобы перенести базу на другой телефон или планшет.</p>
+    <div class="row"><button id="exp">Скачать копию</button><button class="sec" id="impB">Загрузить копию</button></div>
+    <input id="imp" type="file" accept="application/json" hidden>
+  </div>
+  <div class="card">
+    <h2>О приложении</h2>
+    <p class="tip">Формулы как в таблице: смесь = объём × плотность × (1 + запас), гипс = смесь / (100 + вода + добавка) × 100. Работает без интернета. На iPhone: «Поделиться» → «На экран Домой». На Android: меню → «Установить приложение».</p>
+  </div>
+</section>
+</main>
+
+<button class="fab" id="fab" style="display:none" aria-label="Добавить форму">+</button>
+<nav>
+  <button data-t="calc" class="on"><i>⚖️</i>Расчёт</button>
+  <button data-t="forms"><i>🗂️</i>Формы</button>
+  <button data-t="more"><i>⚙️</i>Ещё</button>
+</nav>
+
+<dialog id="dView"><div class="dlg" id="vBody"></div></dialog>
+<dialog id="dEdit"><div class="dlg">
+  <h3 id="eTitle">Новая форма</h3>
+  <img id="ePhoto" class="big" style="display:none" alt="">
+  <div class="row field"><button class="sec" id="ePick">📷 Фото</button><button class="danger" id="eDelPhoto" style="display:none">Убрать фото</button></div>
+  <input id="eFile" type="file" accept="image/*" hidden>
+  <div class="field"><label>Название формы</label><input id="eName"></div>
+  <div class="field"><label>Что получается (изделие)</label><input id="eProd" placeholder="например, свеча, поднос…"></div>
+  <div class="grid">
+    <div><label>Объём, мл</label><input id="eVol" type="number" inputmode="decimal"></div>
+    <div><label>Тип смеси</label><select id="eMode"><option value="g">Гипс + вода</option><option value="s">С добавкой СВВ-500</option></select></div>
+    <div><label>Вода, %</label><input id="eWater" type="number" inputmode="decimal"></div>
+    <div id="eAddW"><label>Добавка, %</label><input id="eAdd" type="number" inputmode="decimal"></div>
+    <div><label>Краситель, %</label><input id="ePig" type="number" inputmode="decimal" step="0.1"></div>
+    <div><label>Запас, %</label><input id="eRes" type="number" inputmode="decimal"></div>
+  </div>
+  <div class="field" style="margin-top:10px"><label>Рецептура, заметки</label><textarea id="eNotes" placeholder="Марка гипса, время схватывания, нюансы заливки…"></textarea></div>
+  <div class="row" style="justify-content:space-between"><button class="danger" id="eDel">Удалить</button><div class="row"><button class="sec" id="eCancel">Отмена</button><button id="eSave">Сохранить</button></div></div>
+</div></dialog>
+
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const SEED=[["свеча маленькая",95],["Поднос маленький",176],["Поднос большой",273],["Сфера большая",280],["Ваза ребристая",120],["Свеча большая (2 шт)",170],["Свеча средняя",250],["Шар",183],["Шестиугольник",159],["Девочка",155],["Руки",521],["Девочки",120],["Тыква",222],["Форма 69",245],["Гранат",75],["Поднос круг",160],["Спил",70],["Поднос ромб",152],["Сердце",70],["Поднос овал микро",163],["Лотос",74],["Рюмки",210],["Листок",80],["Дракон",80],["Кит",185]];
+
+/* ---------- хранилище (IndexedDB) ---------- */
+let DB;
+const idb=()=>new Promise((res,rej)=>{const r=indexedDB.open("gips",1);r.onupgradeneeded=()=>r.result.createObjectStore("forms",{keyPath:"id"});r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+const tx=(m,fn)=>new Promise((res,rej)=>{const t=DB.transaction("forms",m),s=t.objectStore("forms"),q=fn(s);t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error)});
+const getAll=()=>tx("readonly",s=>s.getAll());
+const put=f=>tx("readwrite",s=>s.put(f));
+const del=id=>tx("readwrite",s=>s.delete(id));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+
+const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+/* ---------- расчёт ---------- */
+const DEF={mode:"g",dens:1.9,res:10,water:27,add:4,pig:0};
+let S=Object.assign({},DEF,LS.get("calc",{}),{});
+S.vol=LS.get("calc",{}).vol||"";S.parts=LS.get("calc",{}).parts||1;
+let curForm=null,forms=[];
+
+function calc(p){
+  const V=+p.vol||0,d=+p.dens||0,r=+p.res||0,w=+p.water||0,a=p.mode==="s"?(+p.add||0):0,pg=+p.pig||0,n=Math.max(1,Math.round(+p.parts||1));
+  const total=V*d*(1+r/100);
+  const g=total/(100+w+a)*100;
+  return{total,g,w:g*w/100,a:g*a/100,pg:g*pg/100,n};
+}
+const f0=x=>Math.round(x).toString();
+const f1=x=>(Math.round(x*10)/10).toString().replace(".",",");
+
+function render(){
+  const c=calc(S),n=c.n;
+  const cells=[["Гипс, г",c.g],["Вода, г",c.w]];
+  if(S.mode==="s")cells.push(["СВВ-500, г",c.a]);
+  if(+S.pig>0)cells.push(["Краситель "+S.pig+"%, г",c.pg]);
+  $("#out").innerHTML=cells.map(([l,v])=>`<div><span>${l}</span><b>${v<10?f1(v):f0(v)}</b>${n>1?`<small>на 1 часть из ${n}: ${v/n<10?f1(v/n):f0(v/n)}</small>`:""}</div>`).join("")+
+   `<div style="grid-column:1/-1"><span>Всего смеси, г</span><b style="font-size:22px">${f0(c.total)}</b></div>`;
+  $("#m-g").classList.toggle("on",S.mode==="g");$("#m-s").classList.toggle("on",S.mode==="s");
+  $("#addW").style.display=S.mode==="s"?"":"none";
+  $("#pigChips").querySelectorAll("button").forEach(b=>b.classList.toggle("on",+b.dataset.v===+S.pig));
+  LS.set("calc",S);
+}
+function fillInputs(){
+  $("#vol").value=S.vol;$("#parts").value=S.parts;$("#dens").value=S.dens;$("#res").value=S.res;
+  $("#water").value=S.water;$("#add").value=S.add;$("#pig").value=S.pig||"";
+}
+function bindCalc(){
+  const map={vol:"vol",parts:"parts",dens:"dens",res:"res",water:"water",add:"add",pig:"pig"};
+  for(const id in map)$("#"+id).addEventListener("input",e=>{S[map[id]]=e.target.value;render()});
+  $("#m-g").onclick=()=>{S.mode="g";render()};
+  $("#m-s").onclick=()=>{S.mode="s";if(!+S.water||S.water>=27)S.water=22;fillInputs();render()};
+  $("#pigChips").innerHTML=[0,1,2,3,4,5].map(v=>`<button class="chip" data-v="${v}">${v?v+"%":"нет"}</button>`).join("");
+  $("#pigChips").onclick=e=>{const b=e.target.closest("button");if(!b)return;S.pig=+b.dataset.v;$("#pig").value=S.pig||"";render()};
+  $("#pick").onchange=e=>{const f=forms.find(x=>x.id===e.target.value);curForm=f||null;if(f)loadForm(f)};
+  const dd=()=>{const w=+$("#dw").value,p=+$("#dp").value;const d=w&&p?p/w:0;$("#dres").textContent=d?"Плотность: "+d.toFixed(2).replace(".",","):"—";return d};
+  $("#dw").oninput=$("#dp").oninput=dd;
+  $("#dapply").onclick=()=>{const d=dd();if(d){S.dens=+d.toFixed(2);fillInputs();render()}};
+  $("#saveToForm").onclick=saveRecipeToForm;
+}
+function loadForm(f){
+  S.vol=f.vol;S.mode=f.mode||"g";S.water=f.water??S.water;S.add=f.add??S.add;S.pig=f.pig||0;S.res=f.res??S.res;
+  fillInputs();render();
+}
+async function saveRecipeToForm(){
+  if(!curForm){ if(!+S.vol)return alert("Введите объём формы");openEdit(null,{vol:S.vol});return}
+  Object.assign(curForm,{vol:+S.vol,mode:S.mode,water:+S.water,add:+S.add,pig:+S.pig,res:+S.res});
+  await put(curForm);await reload();alert("Рецептура сохранена в «"+curForm.name+"»");
+}
+
+/* ---------- список форм ---------- */
+function photoURL(f){return f.photo?URL.createObjectURL(f.photo):""}
+const urls=[];
+function renderList(){
+  urls.splice(0).forEach(u=>URL.revokeObjectURL(u));
+  const q=$("#q").value.trim().toLowerCase();
+  const arr=forms.filter(f=>!q||(f.name+" "+(f.prod||"")).toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name,"ru"));
+  $("#list").innerHTML=arr.map(f=>{let u="";if(f.photo){u=URL.createObjectURL(f.photo);urls.push(u)}
+    return `<div class="fc" data-id="${f.id}"><div class="ph" ${u?`style="background-image:url('${u}')"`:""}>${u?"":"🧱"}</div><div class="t"><b>${esc(f.name)}</b><span>${f.vol} мл${f.prod?" · "+esc(f.prod):""}</span></div></div>`}).join("");
+  $("#emptyHint").textContent=arr.length?"":"Ничего не найдено. Нажмите «+», чтобы добавить форму.";
+  $("#stat").textContent=forms.length+" форм";
+  const sel=$("#pick");sel.innerHTML='<option value="">— выбрать из базы —</option>'+forms.slice().sort((a,b)=>a.name.localeCompare(b.name,"ru")).map(f=>`<option value="${f.id}">${esc(f.name)} · ${f.vol} мл</option>`).join("");
+  sel.value=curForm?curForm.id:"";
+}
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+async function reload(){forms=await getAll();if(curForm)curForm=forms.find(f=>f.id===curForm.id)||null;renderList()}
+
+/* ---------- карточка формы ---------- */
+let viewURL="";
+function openView(id){
+  const f=forms.find(x=>x.id===id);if(!f)return;
+  if(viewURL)URL.revokeObjectURL(viewURL);viewURL=f.photo?URL.createObjectURL(f.photo):"";
+  const p={vol:f.vol,dens:S.dens,res:f.res??S.res,water:f.water??S.water,add:f.add??S.add,pig:f.pig||0,mode:f.mode||"g",parts:1};
+  const c=calc(p);
+  $("#vBody").innerHTML=`${viewURL?`<img class="big" src="${viewURL}">`:""}
+   <h3>${esc(f.name)}</h3>
+   ${f.prod?`<div class="kv"><span>Что получается</span><b>${esc(f.prod)}</b></div>`:""}
+   <div class="kv"><span>Объём</span><b>${f.vol} мл</b></div>
+   <div class="kv"><span>Смесь</span><b>${p.mode==="s"?"гипс + СВВ-500":"гипс + вода"}</b></div>
+   <div class="kv"><span>Вода к гипсу</span><b>${p.water}%</b></div>
+   ${p.mode==="s"?`<div class="kv"><span>Добавка</span><b>${p.add}%</b></div>`:""}
+   ${p.pig?`<div class="kv"><span>Краситель</span><b>${p.pig}%</b></div>`:""}
+   <div class="kv"><span>Запас</span><b>${p.res}%</b></div>
+   <div class="kv"><span>Гипс</span><b>${f0(c.g)} г</b></div>
+   <div class="kv"><span>Вода</span><b>${f0(c.w)} г</b></div>
+   ${p.mode==="s"?`<div class="kv"><span>СВВ-500</span><b>${f1(c.a)} г</b></div>`:""}
+   ${p.pig?`<div class="kv"><span>Краситель</span><b>${f1(c.pg)} г</b></div>`:""}
+   ${f.notes?`<p style="white-space:pre-wrap">${esc(f.notes)}</p>`:""}
+   <p class="tip">Расчёт при плотности ${String(S.dens).replace(".",",")} г/см³ (из вкладки «Расчёт»).</p>
+   <div class="row" style="justify-content:space-between;margin-top:10px"><button class="sec" id="vEdit">Править</button><div class="row"><button class="sec" id="vClose">Закрыть</button><button id="vCalc">В расчёт</button></div></div>`;
+  $("#vClose").onclick=()=>$("#dView").close();
+  $("#vEdit").onclick=()=>{$("#dView").close();openEdit(f)};
+  $("#vCalc").onclick=()=>{curForm=f;loadForm(f);renderList();$("#dView").close();showTab("calc")};
+  $("#dView").showModal();
+}
+
+/* ---------- редактирование ---------- */
+let editing=null,ePhotoBlob=null,eURL="";
+function setEPhoto(){
+  if(eURL)URL.revokeObjectURL(eURL);eURL=ePhotoBlob?URL.createObjectURL(ePhotoBlob):"";
+  $("#ePhoto").style.display=eURL?"":"none";if(eURL)$("#ePhoto").src=eURL;
+  $("#eDelPhoto").style.display=eURL?"":"none";$("#ePick").textContent=eURL?"📷 Заменить фото":"📷 Фото";
+}
+function openEdit(f,pre){
+  editing=f;const d=f||Object.assign({name:"",prod:"",vol:"",mode:S.mode,water:S.water,add:S.add,pig:S.pig,res:S.res,notes:""},pre||{});
+  $("#eTitle").textContent=f?"Править форму":"Новая форма";
+  $("#eName").value=d.name;$("#eProd").value=d.prod||"";$("#eVol").value=d.vol;$("#eMode").value=d.mode||"g";
+  $("#eWater").value=d.water;$("#eAdd").value=d.add;$("#ePig").value=d.pig||"";$("#eRes").value=d.res;$("#eNotes").value=d.notes||"";
+  $("#eAddW").style.display=$("#eMode").value==="s"?"":"none";
+  $("#eDel").style.display=f?"":"none";
+  ePhotoBlob=f?f.photo||null:null;setEPhoto();
+  $("#dEdit").showModal();
+}
+function resize(file,max=1100){
+  return new Promise((res,rej)=>{const img=new Image(),u=URL.createObjectURL(file);
+    img.onload=()=>{const k=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement("canvas");
+      c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+      URL.revokeObjectURL(u);c.toBlob(b=>b?res(b):rej(),"image/jpeg",.82)};
+    img.onerror=()=>{URL.revokeObjectURL(u);rej()};img.src=u});
+}
+function bindEdit(){
+  $("#ePick").onclick=()=>$("#eFile").click();
+  $("#eFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{ePhotoBlob=await resize(f)}catch(_){alert("Не удалось открыть фото")}e.target.value="";setEPhoto()};
+  $("#eDelPhoto").onclick=()=>{ePhotoBlob=null;setEPhoto()};
+  $("#eMode").onchange=()=>$("#eAddW").style.display=$("#eMode").value==="s"?"":"none";
+  $("#eCancel").onclick=()=>$("#dEdit").close();
+  $("#eSave").onclick=async()=>{
+    const name=$("#eName").value.trim(),vol=+$("#eVol").value;
+    if(!name)return alert("Введите название");if(!vol)return alert("Введите объём");
+    const f=Object.assign(editing||{id:uid(),created:Date.now()},{name,prod:$("#eProd").value.trim(),vol,mode:$("#eMode").value,
+      water:+$("#eWater").value,add:+$("#eAdd").value,pig:+$("#ePig").value,res:+$("#eRes").value,notes:$("#eNotes").value.trim(),photo:ePhotoBlob});
+    await put(f);curForm=f;await reload();$("#dEdit").close();
+  };
+  $("#eDel").onclick=async()=>{if(!confirm("Удалить форму «"+editing.name+"»?"))return;await del(editing.id);if(curForm&&curForm.id===editing.id)curForm=null;await reload();$("#dEdit").close()};
+}
+
+/* ---------- резервная копия ---------- */
+const b2d=b=>new Promise(r=>{if(!b)return r(null);const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(b)});
+const d2b=d=>d?fetch(d).then(r=>r.blob()):null;
+async function exportAll(){
+  const out=[];for(const f of forms)out.push(Object.assign({},f,{photo:await b2d(f.photo)}));
+  const blob=new Blob([JSON.stringify({v:1,calc:S,forms:out})],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="gips-baza-"+new Date().toISOString().slice(0,10)+".json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+async function importAll(file){
+  try{const j=JSON.parse(await file.text());if(!Array.isArray(j.forms))throw 0;
+    if(!confirm("Добавить/обновить "+j.forms.length+" форм из копии?"))return;
+    for(const f of j.forms){f.photo=await d2b(f.photo);await put(f)}
+    await reload();alert("Готово")}catch(e){alert("Файл не похож на копию базы")}
+}
+
+/* ---------- вкладки ---------- */
+const TT={calc:"Расчёт гипса",forms:"База форм",more:"Ещё"};
+function showTab(t){document.querySelectorAll(".tab").forEach(e=>e.classList.toggle("on",e.id==="t-"+t));
+  document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));
+  $("#ttl").textContent=TT[t];$("#fab").style.display=t==="forms"?"":"none";scrollTo(0,0)}
+
+/* ---------- старт ---------- */
+(async()=>{
+  DB=await idb();
+  if(!LS.get("seeded",false)){const cur=await getAll();if(!cur.length)for(const [n,v] of SEED)await put({id:uid(),name:n,prod:"",vol:v,mode:"g",water:27,add:4,pig:0,res:10,notes:"",photo:null,created:Date.now()});LS.set("seeded",true)}
+  try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+  bindCalc();bindEdit();fillInputs();
+  document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>showTab(b.dataset.t));
+  $("#fab").onclick=()=>openEdit(null);
+  $("#q").oninput=renderList;
+  $("#list").onclick=e=>{const c=e.target.closest(".fc");if(c)openView(c.dataset.id)};
+  $("#exp").onclick=exportAll;$("#impB").onclick=()=>$("#imp").click();$("#imp").onchange=e=>{if(e.target.files[0])importAll(e.target.files[0]);e.target.value=""};
+  await reload();render();
+  if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+})();
+</script>
+</body>
+</html>
