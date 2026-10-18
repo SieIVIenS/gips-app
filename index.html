@@ -135,7 +135,7 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
   </div>
   <div class="card">
     <h2>О приложении</h2>
-    <p class="tip">Версия приложения: 7.</p>
+    <p class="tip">Версия приложения: 8.</p>
     <p class="tip">Формулы как в таблице: смесь = объём × плотность × (1 + запас), гипс = смесь / (100 + вода + добавка) × 100. Работает без интернета. На iPhone: «Поделиться» → «На экран Домой». На Android: меню → «Установить приложение».</p>
   </div>
 </section>
@@ -409,7 +409,7 @@ async function sync(){
     for(const l of local)if(l.remote&&!l.dirty&&!ids.has(l.id)){await del(l.id);if(curForm&&curForm.id===l.id)curForm=null}
     LS.set("lastSync",Date.now());cloudErr="";cloudState="ok";
     await reload();
-  }catch(e){const m=String(e.message||e);cloudErr=/load failed|failed to fetch|network/i.test(m)?"не удалось связаться со скриптом Google ("+m+")":m;cloudState="err"}
+  }catch(e){const m=String(e.message||e);cloudErr=/Неизвестное действие/.test(m)?"в Google ещё старая версия скрипта — обновите его (Развертывание → Управление → Новая версия)":/load failed|failed to fetch|network/i.test(m)?"не удалось связаться со скриптом Google ("+m+")":m;cloudState="err"}
   syncing=false;showStat();cloudUI();
   if(again){again=false;sync()}
 }
