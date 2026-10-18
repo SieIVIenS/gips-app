@@ -122,9 +122,9 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
   <div class="card">
     <h2>Общая база (Google)</h2>
     <p class="tip">Формы и фото синхронизируются между устройствами через вашу Google Таблицу и Диск.</p>
-    <div class="field"><label>Ссылка скрипта (…/exec)</label><input id="cUrl" autocapitalize="off" autocorrect="off"></div>
-    <div class="field"><label>Ключ</label><input id="cKey" autocapitalize="off" autocorrect="off"></div>
-    <div class="row"><button id="cConnect">Подключить</button><button class="sec" id="cSync">Синхронизировать</button><button class="danger" id="cDisc">Отключить</button></div>
+    <div class="field"><label>Ссылка скрипта (…/exec) или целая ссылка/код подключения</label><input id="cUrl" autocapitalize="off" autocorrect="off"></div>
+    <div class="field"><label>Ключ (если не вставили целую ссылку)</label><input id="cKey" autocapitalize="off" autocorrect="off"></div>
+    <div class="row"><button id="cConnect">Подключить</button><button class="sec" id="cSync">Синхронизировать</button><button class="sec" id="cCopy">Скопировать код</button><button class="danger" id="cDisc">Отключить</button></div>
     <p class="tip" id="cInfo"></p>
   </div>
   <div class="card">
@@ -135,7 +135,7 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
   </div>
   <div class="card">
     <h2>О приложении</h2>
-    <p class="tip">Версия приложения: 6.</p>
+    <p class="tip">Версия приложения: 7.</p>
     <p class="tip">Формулы как в таблице: смесь = объём × плотность × (1 + запас), гипс = смесь / (100 + вода + добавка) × 100. Работает без интернета. На iPhone: «Поделиться» → «На экран Домой». На Android: меню → «Установить приложение».</p>
   </div>
 </section>
@@ -413,8 +413,13 @@ async function sync(){
   syncing=false;showStat();cloudUI();
   if(again){again=false;sync()}
 }
+function parseConn(t){t=String(t||"").trim();const m=t.match(/connect=([^&\s]+)/);const c=m?m[1]:t;
+  try{const j=JSON.parse(atob(decodeURIComponent(c)));if(j.u&&j.k)return j}catch(e){}return null}
 function bindCloud(){
-  $("#cConnect").onclick=()=>{const url=$("#cUrl").value.trim(),key=$("#cKey").value.trim();if(!url||!key)return alert("Введите ссылку и ключ");LS.set("cloud",{url,key});sync()};
+  $("#cCopy").onclick=async()=>{const c=LS.get("cloud",null);if(!c)return alert("Сначала подключите базу");
+    const code=btoa(JSON.stringify({u:c.url,k:c.key}));
+    try{await navigator.clipboard.writeText(code);alert("Код скопирован. Вставьте его в поле «Ссылка скрипта» в другом приложении и нажмите «Подключить».")}catch(e){prompt("Скопируйте код:",code)}};
+  $("#cConnect").onclick=()=>{let url=$("#cUrl").value.trim(),key=$("#cKey").value.trim();const pc=parseConn(url);if(pc){url=pc.u;key=pc.k}if(!url||!key)return alert("Введите ссылку и ключ");LS.set("cloud",{url,key});sync()};
   $("#cSync").onclick=sync;
   $("#cDisc").onclick=()=>{if(confirm("Отключить общую базу? Данные на устройстве останутся.")){LS.set("cloud",null);cloudState="";showStat();cloudUI()}};
   addEventListener("online",sync);
